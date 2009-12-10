@@ -10,3 +10,8 @@ Installation
 
     sudo make install
 
+
+Usage
+=====================
+
+    $ github-notify [feed url]
