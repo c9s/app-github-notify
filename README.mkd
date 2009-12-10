@@ -1,5 +1,4 @@
 
-
 Github Growl Notifier
 =====================
 
@@ -9,5 +8,5 @@ this script simply use growlnotify binary to pop growls.
 Installation
 =====================
 
-    make install
+    sudo make install
 
