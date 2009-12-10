@@ -1,0 +1,101 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+use XML::Atom::Feed;
+use Cache::File;
+
+# http://gist.github.com/253343
+
+$|++;
+my $feed_uri     = shift;
+
+unless( $feed_uri ) {
+    print <<HELP;
+
+github-notify  [feed uri]
+
+HELP
+    exit;
+
+}
+
+my $delay        = 15;
+my $notifyname   = "Github";
+my $notifyicon   = "/tmp/github-fluidicon.png";
+my $use_say      = 1;
+my $ignore_first = 1;
+my $watched_event = "(".join('|',
+            'started watching',
+            'created repository',
+            'started following',
+            'pushed to' ,
+            'created gist',
+#            'opened issue',
+#            'commented on',
+#            'uploaded a file',
+).")";
+my $seen = Cache::File->new(
+    cache_root      => '/tmp/github',
+    default_expires => 'never'
+);
+
+use LWP::Simple;
+
+
+sub clear_line {
+    my $width = 78;
+    print "\r";
+    print ' ' x $width;
+    print "\r";
+}
+
+sub get_gravatar {
+    my ($author,$filename) = @_;
+    my $url = "http://github.com/$author";
+    my $c = LWP::Simple::get( $url );
+    my ($gravatar_url) = ($c =~ m{src="(http://www\.gravatar\.com/.*?)"}s );
+    getstore $gravatar_url, $filename;
+}
+
+while (1) {
+    print "\r[Fetching ... ]";
+    my $feed = XML::Atom::Feed->new( URI->new( $feed_uri ) );
+
+
+    my @es = $feed->entries;
+    for my $entry ( $feed->entries ) {
+        unless ( $seen->get( $entry->id ) ) {
+
+            unless( $ignore_first ) {
+                my $author = $entry->author->name();  # XML::Atom::Person object
+                my $title = $entry->title;
+
+                my $icon_file = "/tmp/github-icon-$author";
+                unless( -e $icon_file ) {
+                    get_gravatar( $author , $icon_file );
+                }
+
+                $icon_file = $notifyicon unless -e $icon_file ;
+
+                clear_line;
+                printf( "%s : %s [notify] \n", $entry->title, $entry->link->href );
+                qx( growlnotify --image "$icon_file" --name "$notifyname" -m "$title" -t 'Github' );
+                if ( $title =~ /$watched_event/ ) {
+                    print "event re matched , say this.\n";
+                    qx( say "$title" ) 
+                }
+            }
+
+            $seen->set( $entry->id, 1 );
+        }
+    }
+    $ignore_first = 0 if $ignore_first;
+
+    for ( 0 .. $delay ) { 
+        clear_line;
+        print "[Sleeping ...] @{[ $delay - $_ ]} ";
+        sleep 1;
+    }
+}
+
+

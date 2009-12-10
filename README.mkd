@@ -1,0 +1,13 @@
+
+
+Github Growl Notifier
+=====================
+
+since Mac::\* modules doesnt work on snow leopard.
+this script simply use growlnotify binary to pop growls.
+
+Installation
+=====================
+
+    make install
+
